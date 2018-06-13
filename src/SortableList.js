@@ -33,7 +33,7 @@ export default class SortableList extends Component {
     renderRow: PropTypes.func.isRequired,
     renderHeader: PropTypes.func,
     renderFooter: PropTypes.func,
-
+    onScroll: PropTypes.func,
     onChangeOrder: PropTypes.func,
     onActivateRow: PropTypes.func,
     onReleaseRow: PropTypes.func,
@@ -613,8 +613,13 @@ export default class SortableList extends Component {
     }
   };
 
-  _onScroll = ({nativeEvent: {contentOffset}}) => {
+  _onScroll = (e) => {
+
+      const {nativeEvent: {contentOffset}} = e;
+      const { props: { onScroll } } = this;
       this._contentOffset = contentOffset;
+
+      onScroll && onScroll(e);
   };
 
   _onRefContainer = (component) => {

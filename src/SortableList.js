@@ -1,6 +1,14 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
-import {ScrollView, View, StyleSheet, Platform, RefreshControl, ViewPropTypes} from 'react-native';
+import {
+  ScrollView, 
+  View, 
+  StyleSheet, 
+  Platform, 
+  RefreshControl, 
+  ViewPropTypes,
+  Animated
+} from 'react-native';
 import {shallowEqual, swapArrayElements} from './utils';
 import Row from './Row';
 
@@ -29,11 +37,13 @@ export default class SortableList extends Component {
     autoscrollAreaSize: PropTypes.number,
     rowActivationTime: PropTypes.number,
     manuallyActivateRows: PropTypes.bool,
-
     renderRow: PropTypes.func.isRequired,
     renderHeader: PropTypes.func,
     renderFooter: PropTypes.func,
     onScroll: PropTypes.func,
+    onScrollEndDragHandler: PropTypes.func,
+    onScrollEventMap: PropTypes.object,
+    scrollUseNativeDriver: PropTypes.bool,
     onChangeOrder: PropTypes.func,
     onActivateRow: PropTypes.func,
     onReleaseRow: PropTypes.func,
@@ -110,13 +120,32 @@ export default class SortableList extends Component {
           this._resolveRowLayout[key] = resolve;
         });
       });
-      this.setState({
+      
+      // this.setState({
+      //   animated: false,
+      //   data: nextData,
+      //   containerLayout: null,
+      //   //rowsLayouts: null,
+      //   order: nextOrder
+      // });
+
+      if (nextData.length > data.length) {
+        this.setState({
         animated: false,
         data: nextData,
         containerLayout: null,
         rowsLayouts: null,
         order: nextOrder
-      });
+        });
+      } else {
+        this.setState({
+        // animated: false,
+        data: nextData,
+        containerLayout: null,
+        rowsLayouts: null,
+        order: nextOrder
+        });
+      }
 
     } else if (order && nextOrder && !shallowEqual(order, nextOrder)) {
       this.setState({order: nextOrder});
@@ -184,7 +213,13 @@ export default class SortableList extends Component {
   }
 
   render() {
-    let {contentContainerStyle, innerContainerStyle, horizontal, style, showsVerticalScrollIndicator, showsHorizontalScrollIndicator} = this.props;
+    let {
+      contentContainerStyle, innerContainerStyle, horizontal, 
+      style, showsVerticalScrollIndicator, showsHorizontalScrollIndicator,
+      onScrollEventMap,
+      scrollUseNativeDriver,
+      onScrollEndDragHandler
+    } = this.props;
     const {animated, contentHeight, contentWidth, scrollEnabled} = this.state;
     const containerStyle = StyleSheet.flatten([style, {opacity: Number(animated)}])
     innerContainerStyle = [
@@ -200,6 +235,19 @@ export default class SortableList extends Component {
       });
     }
 
+    let onScrollHandler;
+
+    if (onScrollEventMap) {
+      const { useNativeDriver } = onScrollEventMap;
+      delete onScrollEventMap.useNativeDriver;
+      onScrollHandler = Animated.event([onScrollEventMap], {
+        useNativeDriver: !!scrollUseNativeDriver,
+        listener: this._onScroll
+      })
+    } else {
+      onScrollHandler = this._onScroll;
+    }
+
     return (
       <View style={containerStyle} ref={this._onRefContainer}>
         <ScrollView
@@ -211,7 +259,8 @@ export default class SortableList extends Component {
           scrollEnabled={scrollEnabled}
           showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
           showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-          onScroll={this._onScroll}>
+          onScrollEndDrag={onScrollEndDragHandler}
+          onScroll={onScrollHandler}>
           {this._renderHeader()}
           <View style={innerContainerStyle}>
             {this._renderRows()}
